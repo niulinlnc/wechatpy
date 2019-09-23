@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, unicode_literals
 
-from wechatpy.fields import IntegerField, StringField
 from wechatpy import messages
-
+from wechatpy.fields import IntegerField, StringField
 
 MESSAGE_TYPES = {}
 
@@ -12,6 +11,7 @@ def register_message(msg_type):
     def register(cls):
         MESSAGE_TYPES[msg_type] = cls
         return cls
+
     return register
 
 
@@ -43,6 +43,7 @@ class VideoMessage(messages.VideoMessage):
 @register_message('location')
 class LocationMessage(messages.LocationMessage):
     agent = IntegerField('AgentID', 0)
+
 
 @register_message('link')
 class LinkMessage(messages.LinkMessage):

@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, unicode_literals
-import sys
 import time
 import inspect
 import logging
+import warnings
 
 import six
 import requests
+
+from wechatpy.constants import WeChatErrorCode
 from wechatpy.utils import json, get_querystring
 from wechatpy.session.memorystorage import MemoryStorage
 from wechatpy.exceptions import WeChatClientException, APILimitedException
@@ -21,30 +23,19 @@ def _is_api_endpoint(obj):
 
 
 class BaseWeChatClient(object):
-
     API_BASE_URL = ''
 
     def __new__(cls, *args, **kwargs):
         self = super(BaseWeChatClient, cls).__new__(cls)
-        if sys.version_info[:2] == (2, 6):
-            # Python 2.6 inspect.gemembers bug workaround
-            # http://bugs.python.org/issue1785
-            for _class in cls.__mro__:
-                if issubclass(_class, BaseWeChatClient):
-                    for name, api in _class.__dict__.items():
-                        if isinstance(api, BaseWeChatAPI):
-                            api_cls = type(api)
-                            api = api_cls(self)
-                            setattr(self, name, api)
-        else:
-            api_endpoints = inspect.getmembers(self, _is_api_endpoint)
-            for name, api in api_endpoints:
-                api_cls = type(api)
-                api = api_cls(self)
-                setattr(self, name, api)
+        api_endpoints = inspect.getmembers(self, _is_api_endpoint)
+        for name, api in api_endpoints:
+            api_cls = type(api)
+            api = api_cls(self)
+            setattr(self, name, api)
         return self
 
     def __init__(self, appid, access_token=None, session=None, timeout=None, auto_retry=True):
+        self._http = requests.Session()
         self.appid = appid
         self.expires_at = None
         self.session = session or MemoryStorage()
@@ -79,10 +70,6 @@ class BaseWeChatClient(object):
         else:
             url = url_or_endpoint
 
-        # 群发消息上传视频接口地址 HTTPS 证书错误，暂时忽略证书验证
-        if url.startswith('https://file.api.weixin.qq.com'):
-            kwargs['verify'] = False
-
         if 'params' not in kwargs:
             kwargs['params'] = {}
         if isinstance(kwargs['params'], dict) and \
@@ -95,7 +82,7 @@ class BaseWeChatClient(object):
 
         kwargs['timeout'] = kwargs.get('timeout', self.timeout)
         result_processor = kwargs.pop('result_processor', None)
-        res = requests.request(
+        res = self._http.request(
             method=method,
             url=url,
             **kwargs
@@ -120,7 +107,7 @@ class BaseWeChatClient(object):
             result = json.loads(res.content.decode('utf-8', 'ignore'), strict=False)
         except (TypeError, ValueError):
             # Return origin response object if we can not decode it as JSON
-            logger.warning('Can not decode response as JSON', exc_info=True)
+            logger.debug('Can not decode response as JSON', exc_info=True)
             return res
         return result
 
@@ -137,14 +124,17 @@ class BaseWeChatClient(object):
 
         if 'base_resp' in result:
             # Different response in device APIs. Fuck tencent!
-            result = result['base_resp']
+            result.update(result.pop('base_resp'))
         if 'errcode' in result:
             result['errcode'] = int(result['errcode'])
 
         if 'errcode' in result and result['errcode'] != 0:
             errcode = result['errcode']
             errmsg = result.get('errmsg', errcode)
-            if errcode in (40001, 40014, 42001) and self.auto_retry:
+            if self.auto_retry and errcode in (
+                    WeChatErrorCode.INVALID_CREDENTIAL.value,
+                    WeChatErrorCode.INVALID_ACCESS_TOKEN.value,
+                    WeChatErrorCode.EXPIRED_ACCESS_TOKEN.value):
                 logger.info('Access token expired, fetch a new one and retry request')
                 self.fetch_access_token()
                 access_token = self.session.get(self.access_token_key)
@@ -155,7 +145,7 @@ class BaseWeChatClient(object):
                     result_processor=result_processor,
                     **kwargs
                 )
-            elif errcode == 45009:
+            elif errcode == WeChatErrorCode.OUT_OF_API_FREQ_LIMIT.value:
                 # api freq out of limit
                 raise APILimitedException(
                     errcode,
@@ -182,7 +172,11 @@ class BaseWeChatClient(object):
             **kwargs
         )
 
-    _get = get
+    def _get(self, url, **kwargs):
+        warnings.warn('`_get` method of `WeChatClient` is deprecated, will be removed in 1.6,'
+                      'Use `get` instead',
+                      DeprecationWarning, stacklevel=2)
+        return self.get(url, **kwargs)
 
     def post(self, url, **kwargs):
         return self._request(
@@ -191,12 +185,16 @@ class BaseWeChatClient(object):
             **kwargs
         )
 
-    _post = post
+    def _post(self, url, **kwargs):
+        warnings.warn('`_post` method of `WeChatClient` is deprecated, will be removed in 1.6,'
+                      'Use `post` instead',
+                      DeprecationWarning, stacklevel=2)
+        return self.post(url, **kwargs)
 
     def _fetch_access_token(self, url, params):
         """ The real fetch access token """
         logger.info('Fetching access token')
-        res = requests.get(
+        res = self._http.get(
             url=url,
             params=params
         )

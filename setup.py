@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from __future__ import with_statement, print_function
+from __future__ import print_function
 
 try:
     # python setup.py test
@@ -35,33 +35,7 @@ class PyTest(TestCommand):
 cmdclass = {}
 cmdclass['test'] = PyTest
 
-# patch bdist_wheel
-try:
-    from wheel.bdist_wheel import bdist_wheel
-
-    REPLACE = (
-        'macosx_10_6_intel.'
-        'macosx_10_9_intel.'
-        'macosx_10_9_x86_64.'
-        'macosx_10_10_intel.'
-        'macosx_10_10_x86_64'
-    )
-
-    class _bdist_wheel(bdist_wheel):
-        def get_tag(self):
-            tag = bdist_wheel.get_tag(self)
-            if tag[2] == 'macosx_10_6_intel':
-                tag = (tag[0], tag[1], REPLACE)
-            return tag
-
-    cmdclass['bdist_wheel'] = _bdist_wheel
-except ImportError:
-    pass
-
-readme = 'README.md'
-if os.path.exists('README.rst'):
-    readme = 'README.rst'
-with open(readme, 'rb') as f:
+with open('README.md', 'rb') as f:
     long_description = f.read().decode('utf-8')
 
 with open('requirements.txt') as f:
@@ -69,17 +43,17 @@ with open('requirements.txt') as f:
 
 setup(
     name='wechatpy',
-    version='1.2.16',
+    version='1.8.3',
     author='messense',
     author_email='messense@icloud.com',
-    url='https://github.com/messense/wechatpy',
-    packages=find_packages(),
-    keywords='WeChat, wexin, SDK',
-    description='wechatpy: WeChat SDK for Python',
+    url='https://github.com/jxtech/wechatpy',
+    packages=find_packages(exclude=('tests', 'tests.*')),
+    keywords='WeChat, weixin, SDK',
+    description='WeChat SDK for Python',
     long_description=long_description,
+    long_description_content_type='text/markdown',
     install_requires=requirements,
     include_package_data=True,
-    # namespace_packages=['wechatpy'],
     tests_require=[
         'pytest',
         'httmock',
@@ -95,11 +69,10 @@ setup(
         'Operating System :: POSIX',
         'Operating System :: POSIX :: Linux',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 2.6',
         'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 3.3',
-        'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: Implementation :: CPython',
         'Programming Language :: Python :: Implementation :: PyPy',
         'Intended Audience :: Developers',
@@ -109,6 +82,6 @@ setup(
     ],
     extras_require={
         'cryptography': ['cryptography'],
-        'pycrypto': ['pycrypto'],
+        'pycrypto': ['pycryptodome'],
     }
 )

@@ -9,6 +9,7 @@
     :license: MIT, see LICENSE for more details.
 """
 from __future__ import absolute_import, unicode_literals
+import json
 import time
 import base64
 
@@ -17,7 +18,8 @@ from wechatpy.exceptions import (
     InvalidAppIdException,
     InvalidSignatureException
 )
-from wechatpy.crypto.base import BasePrpCrypto
+from wechatpy.crypto.base import BasePrpCrypto, WeChatCipher
+from wechatpy.crypto.pkcs7 import PKCS7Encoder
 
 
 def _get_signature(token, timestamp, nonce, encrypt):
@@ -71,7 +73,7 @@ class BaseWeChatCrypto(object):
 </xml>"""
         if isinstance(msg, BaseReply):
             msg = msg.render()
-        timestamp = timestamp or to_binary(int(time.time()))
+        timestamp = timestamp or to_text(int(time.time()))
         pc = crypto_class(self.key)
         encrypt = to_text(pc.encrypt(msg, self._id))
         signature = _get_signature(self.token, timestamp, nonce, encrypt)
@@ -118,3 +120,18 @@ class WeChatCrypto(BaseWeChatCrypto):
             nonce,
             PrpCrypto
         )
+
+
+class WeChatWxaCrypto(object):
+    def __init__(self, key, iv, app_id):
+        self.cipher = WeChatCipher(base64.b64decode(key), base64.b64decode(iv))
+        self.app_id = app_id
+
+    def decrypt_message(self, msg):
+        raw_data = base64.b64decode(msg)
+        decrypted = self.cipher.decrypt(raw_data)
+        plaintext = PKCS7Encoder.decode(decrypted)
+        decrypted_msg = json.loads(to_text(plaintext))
+        if decrypted_msg['watermark']['appid'] != self.app_id:
+            raise InvalidAppIdException()
+        return decrypted_msg

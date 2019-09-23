@@ -9,6 +9,7 @@
     :license: MIT, see LICENSE for more details.
 """
 from __future__ import absolute_import, unicode_literals
+
 import six
 
 from wechatpy.utils import to_binary, to_text
@@ -26,19 +27,17 @@ class WeChatException(Exception):
         self.errmsg = errmsg
 
     def __str__(self):
+        _repr = 'Error code: {code}, message: {msg}'.format(
+            code=self.errcode,
+            msg=self.errmsg
+        )
         if six.PY2:
-            return to_binary('Error code: {code}, message: {msg}'.format(
-                code=self.errcode,
-                msg=self.errmsg
-            ))
+            return to_binary(_repr)
         else:
-            return to_text('Error code: {code}, message: {msg}'.format(
-                code=self.errcode,
-                msg=self.errmsg
-            ))
+            return to_text(_repr)
 
     def __repr__(self):
-        _repr = '{klass}({code}, {msg}'.format(
+        _repr = '{klass}({code}, {msg})'.format(
             klass=self.__class__.__name__,
             code=self.errcode,
             msg=self.errmsg
@@ -51,6 +50,7 @@ class WeChatException(Exception):
 
 class WeChatClientException(WeChatException):
     """WeChat API client exception class"""
+
     def __init__(self, errcode, errmsg, client=None,
                  request=None, response=None):
         super(WeChatClientException, self).__init__(errcode, errmsg)
@@ -83,8 +83,14 @@ class WeChatOAuthException(WeChatClientException):
     pass
 
 
+class WeChatComponentOAuthException(WeChatClientException):
+    """WeChat Component OAuth API exception class"""
+    pass
+
+
 class WeChatPayException(WeChatClientException):
     """WeChat Pay API exception class"""
+
     def __init__(self, return_code, result_code=None, return_msg=None,
                  errcode=None, errmsg=None, client=None,
                  request=None, response=None):
@@ -108,21 +114,27 @@ class WeChatPayException(WeChatClientException):
 
     def __str__(self):
         if six.PY2:
-            return to_binary('Error code: {code}, message: {msg}'.format(
+            return to_binary('Error code: {code}, message: {msg}. Pay Error code: {pay_code}, message: {pay_msg}'.format(
                 code=self.return_code,
-                msg=self.return_msg
+                msg=self.return_msg,
+                pay_code=self.errcode,
+                pay_msg=self.errmsg
             ))
         else:
-            return to_text('Error code: {code}, message: {msg}'.format(
+            return to_text('Error code: {code}, message: {msg}. Pay Error code: {pay_code}, message: {pay_msg}'.format(
                 code=self.return_code,
-                msg=self.return_msg
+                msg=self.return_msg,
+                pay_code=self.errcode,
+                pay_msg=self.errmsg
             ))
 
     def __repr__(self):
-        _repr = '{klass}({code}, {msg})'.format(
+        _repr = '{klass}({code}, {msg}). Pay({pay_code}, {pay_msg})'.format(
             klass=self.__class__.__name__,
             code=self.return_code,
-            msg=self.return_msg
+            msg=self.return_msg,
+            pay_code=self.errcode,
+            pay_msg=self.errmsg
         )
         if six.PY2:
             return to_binary(_repr)

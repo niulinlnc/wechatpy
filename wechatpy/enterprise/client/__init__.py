@@ -6,24 +6,25 @@ from wechatpy.enterprise.client import api
 
 
 class WeChatClient(BaseWeChatClient):
-
     API_BASE_URL = 'https://qyapi.weixin.qq.com/cgi-bin/'
 
-    user = api.WeChatUser()
-    department = api.WeChatDepartment()
-    menu = api.WeChatMenu()
-    message = api.WeChatMessage()
-    tag = api.WeChatTag()
-    media = api.WeChatMedia()
-    misc = api.WeChatMisc()
     agent = api.WeChatAgent()
+    appchat = api.WeChatAppChat()
     batch = api.WeChatBatch()
+    chat = api.WeChatChat()
+    department = api.WeChatDepartment()
     jsapi = api.WeChatJSAPI()
     material = api.WeChatMaterial()
+    media = api.WeChatMedia()
+    menu = api.WeChatMenu()
+    message = api.WeChatMessage()
+    misc = api.WeChatMisc()
     oauth = api.WeChatOAuth()
-    shakearound = api.WeChatShakeAround()
     service = api.WeChatService()
-    chat = api.WeChatChat()
+    shakearound = api.WeChatShakeAround()
+    tag = api.WeChatTag()
+    user = api.WeChatUser()
+    external_contact = api.WeChatExternalContact()
 
     def __init__(self, corp_id, secret, access_token=None,
                  session=None, timeout=None, auto_retry=True):
@@ -32,6 +33,10 @@ class WeChatClient(BaseWeChatClient):
         )
         self.corp_id = corp_id
         self.secret = secret
+
+    @property
+    def access_token_key(self):
+        return '{0}_{1}_access_token'.format(self.corp_id, self.secret[:10])
 
     def fetch_access_token(self):
         """ Fetch access token"""

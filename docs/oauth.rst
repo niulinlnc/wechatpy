@@ -12,7 +12,16 @@
    :members:
    :inherited-members:
 
-企业号 OAuth 网页授权接入
+微信开放平台 代公众号 OAuth 网页授权接入
+-----------------------------------
+
+.. module:: wechatpy.component
+
+.. autoclass:: ComponentOAuth
+   :members:
+   :inherited-members:
+
+企业微信 OAuth 网页授权接入
 -----------------------------------
 
 下述代码使用 Flask_. 框架作为示例

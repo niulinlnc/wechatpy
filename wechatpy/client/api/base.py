@@ -4,6 +4,7 @@ from __future__ import absolute_import, unicode_literals
 
 class BaseWeChatAPI(object):
     """ WeChat API base class """
+
     def __init__(self, client=None):
         self._client = client
 
@@ -24,3 +25,11 @@ class BaseWeChatAPI(object):
     @property
     def session(self):
         return self._client.session
+
+    @property
+    def appid(self):
+        return self._client.appid
+
+    @property
+    def secret(self):
+        return self._client.secret

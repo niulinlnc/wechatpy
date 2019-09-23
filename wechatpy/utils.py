@@ -9,9 +9,7 @@
     :license: MIT, see LICENSE for more details.
 """
 from __future__ import absolute_import, unicode_literals
-import six
-import six.moves.urllib.parse as urlparse
-import sys
+import json
 import string
 import random
 import hashlib
@@ -21,6 +19,9 @@ try:
     import simplejson as json
 except ImportError:
     import json  # NOQA
+
+import six
+import six.moves.urllib.parse as urlparse
 
 
 class ObjectDict(dict):
@@ -73,6 +74,25 @@ def check_signature(token, signature, timestamp, nonce):
         raise InvalidSignatureException()
 
 
+def check_wxa_signature(session_key, raw_data, client_signature):
+    """校验前端传来的rawData签名正确
+    详情请参考
+    https://developers.weixin.qq.com/miniprogram/dev/framework/open-ability/signature.html # noqa
+
+    :param session_key: code换取的session_key
+    :param raw_data: 前端拿到的rawData
+    :param client_signature: 前端拿到的signature
+    :raises: InvalidSignatureException
+    :return: 返回数据dict
+    """
+    str2sign = (raw_data + session_key).encode("utf-8")
+    signature = hashlib.sha1(str2sign).hexdigest()
+    if signature != client_signature:
+        from wechatpy.exceptions import InvalidSignatureException
+
+        raise InvalidSignatureException()
+
+
 def to_text(value, encoding='utf-8'):
     """Convert value to unicode, default encoding is utf-8
 
@@ -100,7 +120,7 @@ def to_binary(value, encoding='utf-8'):
         return value
     if isinstance(value, six.text_type):
         return value.encode(encoding)
-    return six.binary_type(value)
+    return to_text(value).encode(encoding)
 
 
 def timezone(zone):
@@ -128,19 +148,13 @@ def random_string(length=16):
 
 
 def get_querystring(uri):
-    """Get Qeruystring information from uri.
+    """Get Querystring information from uri.
 
     :param uri: uri
     :return: querystring info or {}
     """
     parts = urlparse.urlsplit(uri)
-    if sys.version_info[:2] == (2, 6):
-        query = parts.path
-        if query.startswith('?'):
-            query = query[1:]
-    else:
-        query = parts.query
-    return urlparse.parse_qs(query)
+    return urlparse.parse_qs(parts.query)
 
 
 def byte2int(c):
